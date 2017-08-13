@@ -596,7 +596,59 @@ for (k in 1:kfolds)
 table(dados$class, dados$pred_rfore)
 mean(dados$class == dados$pred_rfore)
 
+#-----------------------------------------------------------#
+#--- boosting                                            ---#
+#-----------------------------------------------------------#
 
+list_ntrees <- c(500, 5000)
+list_depths <- c(5, 10, 15, 20, 30)
+cv_gbm <- matrix(nrow = length(list_ntrees) * length(list_depths), ncol = 3)
+
+counter <- 1
+for (ntreesgbm in list_ntrees)
+{
+    for (depthgbm in list_depths)
+    {
+        dados$pred_gbm <- NA
+        for (k in 1:kfolds)
+        {
+            dadosTrain <- dados[dados$folds != k,]
+            dadosTest <- dados[dados$folds == k,]
+            
+            categorias.gbm <- gbm(formula1, data=dadosTrain, distribution="multinomial", 
+                                  n.trees=ntreesgbm, interaction.depth=depthgbm)
+            
+            categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest, n.trees=ntreesgbm, type="response");
+            dados[dados$folds == k, 'pred_gbm'] <- categorias.gbm.pred
+        }
+        
+        cv_gbm[counter, 1] <- ntreesgbm
+        cv_gbm[counter, 2] <- depthgbm
+        cv_gbm[counter, 3] <- mean(dados$class == dados$pred_gbm)
+        counter <- counter + 1
+    }
+}
+
+cv_gbm
+ntrees_opt <- cv_gbm[which.max(cv_gbm[,3]),1]; ntrees_opt
+depth_opt <- cv_gbm[which.max(cv_gbm[,3]),2]; depth_opt
+
+dados$pred_gbm <- NA
+for (k in 1:kfolds)
+{
+    dadosTrain <- dados[dados$folds != k,]
+    dadosTest <- dados[dados$folds == k,]
+
+    categorias.gbm <- gbm(formula1, data=dadosTrain, distribution="multinomial", 
+                          n.trees=ntrees_opt, interaction.depth=depth_opt)
+    summary(categorias.gbm)
+    
+    categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest, n.trees=ntrees_opt, type="response");
+    dados[dados$folds == k, 'pred_gbm'] <- categorias.gbm.pred
+}
+
+table(dados$class, dados$pred_gbm)
+mean(dados$class == dados$pred_gbm)
 
 
 #--------------------------------------------------------------------------#
