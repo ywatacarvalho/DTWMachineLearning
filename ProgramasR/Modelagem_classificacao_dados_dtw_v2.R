@@ -12,6 +12,12 @@ library(nnet);
 library(gbm);
 library(splitstackshape);
 
+#---- packages for deep learning
+library(deepnet);
+library(h2o);
+library(darch);
+library(deepr);
+
 rm(list=ls());
 
 #---------------------------------------------#
@@ -136,7 +142,7 @@ formula2 <- as.formula(paste("classnum ~ ", paste(lognomes, collapse = " + ")));
 formula2
 
 formulann <- as.formula(paste0(paste(colunas_classes, collapse = " + "), " ~ ",
-                               paste(lognomes, collapse = " + ")));
+                               paste(orinomes, collapse = " + ")));
 formulann
 
 #-----------------------------------------------------------#
@@ -640,7 +646,7 @@ cv_gbm
 ntrees_opt <- cv_gbm[which.max(cv_gbm[,3]),1]; ntrees_opt
 depth_opt <- cv_gbm[which.max(cv_gbm[,3]),2]; depth_opt
 
-ntrees_opt <- 500; depth_opt <- 10
+#ntrees_opt <- 500; depth_opt <- 10
 
 dados$pred_gbm <- NA
 for (k in 1:kfolds)
@@ -667,12 +673,15 @@ mean(dados$class == dados$pred_gbm)
 #-----------------------------------------------------------#
 
 formulann
-categorias.nenet1 <- neuralnet(formulann, data = dadosTrain[,colnames(dadosTrain) %in% c(colunas_classes, list_refs)], 
-                               hidden = 1, 
+dados$pred_gbm <- NA
+
+categorias.nenet <- neuralnet(formulann, data = dadosTrain[,colnames(dadosTrain) %in% c(colunas_classes, list_refs)], 
+                               hidden = rep(3, length(colunas_classes)), 
                                act.fct = "logistic", 
                                linear.output = F)
 
-
+categorias.nenet.pred <- compute(categorias.nenet1, dadosTest[, colnames(dadosTest) %in% list_refs])
+table(dadosTest$class, list_classes[max.col(categorias.nenet.pred$net.result)])
 
 #--------------------------------------------------------------------------#
 #--- THE END                                                            ---#
