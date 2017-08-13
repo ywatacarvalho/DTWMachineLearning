@@ -70,12 +70,28 @@ for (i in 1:nrow(dados))
 #--- relabeling classes                    ---#
 #---------------------------------------------#
 
+# conv.lst <- c("Fallow_Cotton"  = "Cotton",
+#               "NonComerc_Cotton" = "Cotton",
+#               "Pasture2" = "Pasture",
+#               "Soybean_Comerc1" = "Double_Cropping",
+#               "Soybean_Comerc2" = "Double_Cropping",
+#               "Soybean_Cotton" = "Soybean_Cotton",
+#               "Soybean_Fallow1" = "Single_Cropping", 
+#               "Soybean_Fallow2" = "Single_Cropping", 
+#               "Soybean_NonComerc1" = "Double_Cropping",
+#               "Soybean_NonComerc2" = "Double_Cropping",
+#               "Soybean_Pasture" = "Pasture",
+#               "Water" = "Water",
+#               "Cerrado" = "Cerrado",
+#               "Pasture2" = "Pasture",
+#               "Forest"   = "Forest")
+
 conv.lst <- c("Fallow_Cotton"  = "Cotton",
               "NonComerc_Cotton" = "Cotton",
               "Pasture2" = "Pasture",
               "Soybean_Comerc1" = "Double_Cropping",
               "Soybean_Comerc2" = "Double_Cropping",
-              "Soybean_Cotton" = "Soybean_Cotton",
+              "Soybean_Cotton" = "Double_Cropping",
               "Soybean_Fallow1" = "Single_Cropping", 
               "Soybean_Fallow2" = "Single_Cropping", 
               "Soybean_NonComerc1" = "Double_Cropping",
