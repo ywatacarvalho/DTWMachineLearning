@@ -18,7 +18,7 @@ rm(list=ls());
 #--- data used for estimations             ---#
 #---------------------------------------------#
 
-dir_base <- "D:\\Alex\\Pesquisa\\LandUseChange\\IIASA_GLOBIOM\\SITS\\inst\\extdata\\examples\\PosProcessamentoDTW"
+dir_base <- "D:\\Alex\\Pesquisa\\LandUseChange\\IIASA_GLOBIOM\\DTWMachineLearning"
 #dir_base <- "//storage3/usuarios/AlexandreYwata/Pesquisa/LandUseChange/IIASA_GLOBIOM/SITS/inst/extdata/examples/PosProcessamentoDTW"
 
 dir_dados <- paste0(dir_base, "\\Dados");
@@ -528,6 +528,76 @@ for (k in 1:kfolds)
 
 table(dados$class, dados$pred_elnet)
 mean(dados$class == dados$pred_elnet)
+
+#-----------------------------------------------------------#
+#--- random forest                                       ---#
+#-----------------------------------------------------------#
+
+list_ntrees <- c(100, 500, 1000)
+list_nodesizes <- c(1, 3, 5)
+cv_rfore <- matrix(nrow = length(list_ntrees) * length(list_nodesizes), ncol = 3)
+
+counter <- 1
+for (ntreesrf in list_ntrees)
+{
+    for (nodesizerf in list_nodesizes)
+    {
+        dados$pred_rfore <- NA
+        for (k in 1:kfolds)
+        {
+            dadosTrain <- dados[dados$folds != k,]
+            dadosTest <- dados[dados$folds == k,]
+            
+            yTrain <- data.matrix(dadosTrain[,length(list_refs)+4])
+            yTest <-  data.matrix(dadosTest[,length(list_refs)+4])
+            
+            xTrain <- log(data.matrix(dadosTrain[,c(2:(length(list_refs)+1))]))
+            xTest <-   log(data.matrix(dadosTest[,c(2:(length(list_refs)+1))]))
+            
+            categorias.rfore <- randomForest(y = factor(yTrain), x = xTrain, data=NULL, 
+                                             ntree=ntreesrf, nodesize = nodesizerf, norm.votes=FALSE)    
+            summary(categorias.rfore)
+            
+            categorias.rfore.pred <- as.character(predict(categorias.rfore, newdata = xTest, type = 'response'))
+            dados[dados$folds == k, 'pred_rfore'] <- categorias.rfore.pred
+        }
+        
+        cv_rfore[counter, 1] <- ntreesrf
+        cv_rfore[counter, 2] <- nodesizerf
+        cv_rfore[counter, 3] <- mean(dados$class == dados$pred_rfore)
+        counter <- counter + 1
+    }
+}
+
+cv_rfore
+ntrees_opt <- cv_rfore[which.max(cv_rfore[,3]),1]; ntrees_opt
+nodesize_opt <- cv_rfore[which.max(cv_rfore[,3]),2]; nodesize_opt
+
+dados$pred_rfore <- NA
+for (k in 1:kfolds)
+{
+    dadosTrain <- dados[dados$folds != k,]
+    dadosTest <- dados[dados$folds == k,]
+    
+    yTrain <- data.matrix(dadosTrain[,length(list_refs)+4])
+    yTest <-  data.matrix(dadosTest[,length(list_refs)+4])
+    
+    xTrain <- log(data.matrix(dadosTrain[,c(2:(length(list_refs)+1))]))
+    xTest <-   log(data.matrix(dadosTest[,c(2:(length(list_refs)+1))]))
+    
+    categorias.rfore <- randomForest(y = factor(yTrain), x = xTrain, data=NULL, 
+                                     ntree=ntrees_opt, nodesize = nodesize_opt, norm.votes=FALSE)      
+    summary(categorias.rfore)
+    
+    categorias.rfore.pred <- as.character(predict(categorias.rfore, newdata = xTest, type = 'response'))
+    dados[dados$folds == k, 'pred_rfore'] <- categorias.rfore.pred
+}
+
+table(dados$class, dados$pred_rfore)
+mean(dados$class == dados$pred_rfore)
+
+
+
 
 #--------------------------------------------------------------------------#
 #--- THE END                                                            ---#
