@@ -629,7 +629,7 @@ mean(dados$class == dados$pred_rfore)
 
 h2o.init(nthreads = -1)
 
-list_ntrees <- c(50, 100, 200)
+list_ntrees <- c(100, 200, 500)
 list_depths <- c(10, 20, 30, 40)
 
 cv_h2ogbm <- matrix(nrow = length(list_ntrees) * length(list_depths), ncol = 3)
@@ -692,6 +692,78 @@ for (k in 1:kfolds)
 
 table(dados$class, dados$pred_h2ogbm)
 mean(dados$class == dados$pred_h2ogbm)
+
+h2o.shutdown()
+
+#-----------------------------------------------------------#
+#--- distributed random forests with h2o                 ---#
+#-----------------------------------------------------------#
+
+h2o.init(nthreads = -1)
+
+list_ntrees <- c(100, 200, 500)
+list_depths <- c(20, 30, 40)
+
+cv_h2orfore <- matrix(nrow = length(list_ntrees) * length(list_depths), ncol = 3)
+
+counter <- 1
+for (ntreesrfore in list_ntrees)
+{
+    for (depthrfore in list_depths)
+    {
+        dados$pred_h2orfore <- NA
+        for (k in 1:kfolds)
+        {
+            dadosTrain <- dados[dados$folds != k,]
+            dadosTest <- dados[dados$folds == k,]
+            
+            h2o_dadosTrain <- as.h2o(dadosTrain[,colnames(dadosTrain) %in% c(list_refs, "class")])
+            h2o_dadosTrain$class <- as.factor(h2o_dadosTrain$class)
+            h2o_dadosTest <- as.h2o(dadosTest[,colnames(dadosTest) %in% list_refs])
+            
+            categorias.h20rfore <- h2o.randomForest(y = "class", x = list_refs, 
+                                                    training_frame = h2o_dadosTrain, 
+                                                    ntrees = ntreesrfore, max_depth = depthrfore)      
+            
+            categorias.h20rfore.pred <- h2o.predict(categorias.h20rfore, newdata = h2o_dadosTest)$predict;
+            
+            dados[dados$folds == k, 'pred_h2orfore'] <- as.character(as.vector(categorias.h20rfore.pred));
+        }
+        
+        cv_h2orfore[counter, 1] <- ntreesrfore
+        cv_h2orfore[counter, 2] <- depthrfore
+        cv_h2orfore[counter, 3] <- mean(dados$class == dados$pred_h2orfore)
+        counter <- counter + 1
+    }
+}
+
+cv_h2orfore
+ntrees_opt <- cv_h2orfore[which.max(cv_h2orfore[,3]),1]; ntrees_opt
+depth_opt <- cv_h2orfore[which.max(cv_h2orfore[,3]),2]; depth_opt
+
+#ntrees_opt <- 100; depth_opt <- 30
+
+dados$pred_h2orfore <- NA
+for (k in 1:kfolds)
+{
+    dadosTrain <- dados[dados$folds != k,]
+    dadosTest <- dados[dados$folds == k,]
+    
+    h2o_dadosTrain <- as.h2o(dadosTrain[,colnames(dadosTrain) %in% c(list_refs, "class")])
+    h2o_dadosTrain$class <- as.factor(h2o_dadosTrain$class)
+    h2o_dadosTest <- as.h2o(dadosTest[,colnames(dadosTest) %in% list_refs])
+    
+    categorias.h20rfore <- h2o.randomForest(y = "class", x = list_refs, 
+                                            training_frame = h2o_dadosTrain, 
+                                            ntrees = ntrees_opt, max_depth = depth_opt)      
+    
+    categorias.h20rfore.pred <- h2o.predict(categorias.h20rfore, newdata = h2o_dadosTest)$predict;
+    
+    dados[dados$folds == k, 'pred_h2orfore'] <- as.character(as.vector(categorias.h20rfore.pred));
+}
+
+table(dados$class, dados$pred_h2orfore)
+mean(dados$class == dados$pred_h2orfore)
 
 h2o.shutdown()
 
