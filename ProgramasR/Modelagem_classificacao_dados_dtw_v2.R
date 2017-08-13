@@ -135,6 +135,10 @@ formula1
 formula2 <- as.formula(paste("classnum ~ ", paste(lognomes, collapse = " + ")));
 formula2
 
+formulann <- as.formula(paste0(paste(colunas_classes, collapse = " + "), " ~ ",
+                               paste(lognomes, collapse = " + ")));
+formulann
+
 #-----------------------------------------------------------#
 #--- linear discriminant analysis - lda                  ---#
 #-----------------------------------------------------------#
@@ -615,11 +619,14 @@ for (ntreesgbm in list_ntrees)
             dadosTrain <- dados[dados$folds != k,]
             dadosTest <- dados[dados$folds == k,]
             
-            categorias.gbm <- gbm(formula1, data=dadosTrain, distribution="multinomial", 
+            categorias.gbm <- gbm(formula1, data=dadosTrain[, colnames(dadosTrain) %in% c('class', list_refs)], 
+                                  distribution="multinomial", 
                                   n.trees=ntreesgbm, interaction.depth=depthgbm)
             
-            categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest, n.trees=ntreesgbm, type="response");
-            dados[dados$folds == k, 'pred_gbm'] <- categorias.gbm.pred
+            categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest[,colnames(dadosTest) %in% c('class', list_refs)], 
+                                           n.trees=ntreesgbm, type="response");
+            
+            dados[dados$folds == k, 'pred_gbm'] <- list_classes[max.col(data.frame(categorias.gbm.pred))]
         }
         
         cv_gbm[counter, 1] <- ntreesgbm
@@ -633,22 +640,38 @@ cv_gbm
 ntrees_opt <- cv_gbm[which.max(cv_gbm[,3]),1]; ntrees_opt
 depth_opt <- cv_gbm[which.max(cv_gbm[,3]),2]; depth_opt
 
+ntrees_opt <- 500; depth_opt <- 10
+
 dados$pred_gbm <- NA
 for (k in 1:kfolds)
 {
     dadosTrain <- dados[dados$folds != k,]
     dadosTest <- dados[dados$folds == k,]
 
-    categorias.gbm <- gbm(formula1, data=dadosTrain, distribution="multinomial", 
+    categorias.gbm <- gbm(formula1, data=dadosTrain[, colnames(dadosTrain) %in% c('class', list_refs)], 
+                          distribution="multinomial", 
                           n.trees=ntrees_opt, interaction.depth=depth_opt)
-    summary(categorias.gbm)
+    #summary(categorias.gbm)
     
-    categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest, n.trees=ntrees_opt, type="response");
-    dados[dados$folds == k, 'pred_gbm'] <- categorias.gbm.pred
+    categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest[,colnames(dadosTest) %in% c('class', list_refs)], 
+                                   n.trees=ntrees_opt, type="response");
+    
+    dados[dados$folds == k, 'pred_gbm'] <- list_classes[max.col(data.frame(categorias.gbm.pred))]
 }
 
 table(dados$class, dados$pred_gbm)
 mean(dados$class == dados$pred_gbm)
+
+#-----------------------------------------------------------#
+#--- neural networks                                     ---#
+#-----------------------------------------------------------#
+
+formulann
+categorias.nenet1 <- neuralnet(formulann, data = dadosTrain[,colnames(dadosTrain) %in% c(colunas_classes, list_refs)], 
+                               hidden = 1, 
+                               act.fct = "logistic", 
+                               linear.output = F)
+
 
 
 #--------------------------------------------------------------------------#
