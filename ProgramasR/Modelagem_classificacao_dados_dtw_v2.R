@@ -611,8 +611,12 @@ mean(dados$class == dados$pred_rfore)
 #--- boosting                                            ---#
 #-----------------------------------------------------------#
 
-list_ntrees <- c(500, 5000)
-list_depths <- c(5, 10, 15, 20, 30)
+#list_ntrees <- c(500, 5000)
+#list_depths <- c(5, 10, 15, 20, 30)
+
+list_ntrees <- c(200)
+list_depths <- c(5, 10, 20, 40)
+
 cv_gbm <- matrix(nrow = length(list_ntrees) * length(list_depths), ncol = 3)
 
 counter <- 1
