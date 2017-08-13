@@ -16,7 +16,7 @@ library(splitstackshape);
 library(deepnet);
 library(h2o);
 library(darch);
-library(deepr);
+library(DEEPR);
 
 rm(list=ls());
 
