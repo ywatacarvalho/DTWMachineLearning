@@ -17,6 +17,7 @@ library(deepnet);
 library(h2o);
 library(darch);
 library(DEEPR);
+library(deepboost);
 
 rm(list=ls());
 
@@ -681,6 +682,7 @@ categorias.nenet <- neuralnet(formulann, data = dadosTrain[,colnames(dadosTrain)
                                linear.output = F)
 
 categorias.nenet.pred <- compute(categorias.nenet1, dadosTest[, colnames(dadosTest) %in% list_refs])
+categorias.nenet.pred.df <- data.frame(categorias.nenet.pred$net.result)
 table(dadosTest$class, list_classes[max.col(categorias.nenet.pred$net.result)])
 
 #--------------------------------------------------------------------------#
