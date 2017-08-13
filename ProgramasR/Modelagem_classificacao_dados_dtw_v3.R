@@ -608,105 +608,52 @@ table(dados$class, dados$pred_rfore)
 mean(dados$class == dados$pred_rfore)
 
 #-----------------------------------------------------------#
-#--- boosting                                            ---#
+#--- deep learning - gradient boosting                   ---#
 #-----------------------------------------------------------#
 
-#list_ntrees <- c(500, 5000)
-#list_depths <- c(5, 10, 15, 20, 30)
+h2o.init(nthreads = -1)
 
-list_ntrees <- c(200, 500, 1000)
+list_ntrees <- c(50, 100, 200)
 list_depths <- c(10, 20, 30, 40)
 
-cv_gbm <- matrix(nrow = length(list_ntrees) * length(list_depths), ncol = 3)
+cv_dplgbm <- matrix(nrow = length(list_ntrees) * length(list_depths), ncol = 3)
 
 counter <- 1
 for (ntreesgbm in list_ntrees)
 {
     for (depthgbm in list_depths)
     {
-        dados$pred_gbm <- NA
+        dados$pred_dplgbm <- NA
         for (k in 1:kfolds)
         {
             dadosTrain <- dados[dados$folds != k,]
             dadosTest <- dados[dados$folds == k,]
             
-            categorias.gbm <- gbm(formula1, data=dadosTrain[, colnames(dadosTrain) %in% c('class', list_refs)], 
-                                  distribution="multinomial", 
-                                  n.trees=ntreesgbm, interaction.depth=depthgbm)
+            h2o_dadosTrain <- as.h2o(dadosTrain[,colnames(dadosTrain) %in% c(list_refs, "class")])
+            h2o_dadosTrain$class <- as.factor(h2o_dadosTrain$class)
+            h2o_dadosTest <- as.h2o(dadosTest[,colnames(dadosTest) %in% list_refs])
             
-            categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest[,colnames(dadosTest) %in% c('class', list_refs)], 
-                                           n.trees=ntreesgbm, type="response");
+            categorias.dplgbm <- h2o.gbm(y = "class", x = list_refs, 
+                                         training_frame = h2o_dadosTrain, distribution = "multinomial",
+                                         ntrees = ntreesgbm, max_depth = depthgbm);
             
-            dados[dados$folds == k, 'pred_gbm'] <- list_classes[max.col(data.frame(categorias.gbm.pred))]
+            categorias.dplgbm.pred <- h2o.predict(categorias.dplgbm, newdata = h2o_dadosTest)$predict;
+            
+            dados[dados$folds == k, 'pred_dplgbm'] <- as.character(as.vector(categorias.dplgbm.pred));
         }
         
-        cv_gbm[counter, 1] <- ntreesgbm
-        cv_gbm[counter, 2] <- depthgbm
-        cv_gbm[counter, 3] <- mean(dados$class == dados$pred_gbm)
+        cv_dplgbm[counter, 1] <- ntreesgbm
+        cv_dplgbm[counter, 2] <- depthgbm
+        cv_dplgbm[counter, 3] <- mean(dados$class == dados$pred_dplgbm)
         counter <- counter + 1
     }
 }
 
-cv_gbm
-ntrees_opt <- cv_gbm[which.max(cv_gbm[,3]),1]; ntrees_opt
-depth_opt <- cv_gbm[which.max(cv_gbm[,3]),2]; depth_opt
+cv_dplgbm
+ntrees_opt <- cv_dplgbm[which.max(cv_dplgbm[,3]),1]; ntrees_opt
+depth_opt <- cv_dplgbm[which.max(cv_dplgbm[,3]),2]; depth_opt
 
 #ntrees_opt <- 500; depth_opt <- 10
-
-dados$pred_gbm <- NA
-for (k in 1:kfolds)
-{
-    dadosTrain <- dados[dados$folds != k,]
-    dadosTest <- dados[dados$folds == k,]
-
-    categorias.gbm <- gbm(formula1, data=dadosTrain[, colnames(dadosTrain) %in% c('class', list_refs)], 
-                          distribution="multinomial", 
-                          n.trees=ntrees_opt, interaction.depth=depth_opt)
-    #summary(categorias.gbm)
-    
-    categorias.gbm.pred <- predict(categorias.gbm, newdata=dadosTest[,colnames(dadosTest) %in% c('class', list_refs)], 
-                                   n.trees=ntrees_opt, type="response");
-    
-    dados[dados$folds == k, 'pred_gbm'] <- list_classes[max.col(data.frame(categorias.gbm.pred))]
-}
-
-table(dados$class, dados$pred_gbm)
-mean(dados$class == dados$pred_gbm)
-
-#-----------------------------------------------#
-#--- neural networks                         ---#
-#-----------------------------------------------#
-
-formulann
-dados$pred_nenet <- NA
-
-for (k in 1:kfolds)
-{
-    dadosTrain <- dados[dados$folds != k,]
-    dadosTest <- dados[dados$folds == k,]
-    
-    categorias.nenet <- neuralnet(formulann, 
-                                  data = dadosTrain[,colnames(dadosTrain) %in% c(colunas_classes, list_refs)], 
-                                  hidden = 1, stepmax = 1e+6, algorithm = "sag", 
-                                  act.fct = "logistic", 
-                                  linear.output = F);
-    
-    categorias.nenet.pred <- compute(categorias.nenet, dadosTest[, colnames(dadosTest) %in% list_refs])
-    categorias.nenet.pred.df <- data.frame(categorias.nenet.pred$net.result)
-    
-    head(categorias.nenet.pred.df, 20)
-    
-    dados[dados$folds == k, 'pred_nenet'] <- list_classes[max.col(categorias.nenet.pred$net.result)]
-}
-
-table(dados$class, dados$pred_nenet)
-mean(dados$class == dados$pred_nenet)
-
-#-----------------------------------------------#
-#--- deep learning - gbm                     ---#
-#-----------------------------------------------#
-
-h2o.init(nthreads = -1)
 
 dados$pred_dplgbm <- NA
 for (k in 1:kfolds)
@@ -717,9 +664,11 @@ for (k in 1:kfolds)
     h2o_dadosTrain <- as.h2o(dadosTrain[,colnames(dadosTrain) %in% c(list_refs, "class")])
     h2o_dadosTrain$class <- as.factor(h2o_dadosTrain$class)
     h2o_dadosTest <- as.h2o(dadosTest[,colnames(dadosTest) %in% list_refs])
-
+    
     categorias.dplgbm <- h2o.gbm(y = "class", x = list_refs, 
-                                 training_frame = h2o_dadosTrain, distribution = "multinomial");
+                                 training_frame = h2o_dadosTrain, distribution = "multinomial",
+                                 ntrees = ntrees_opt, max_depth = depth_opt);
+    
     categorias.dplgbm.pred <- h2o.predict(categorias.dplgbm, newdata = h2o_dadosTest)$predict;
     
     dados[dados$folds == k, 'pred_dplgbm'] <- as.character(as.vector(categorias.dplgbm.pred));
